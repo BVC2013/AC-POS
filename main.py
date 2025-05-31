@@ -11,7 +11,7 @@ import torch.utils.checkpoint as checkpoint
 # ----- GPT Configuration -----
 
 class GPTConfig:
-    def __init__(self, vocab_size, n_layer=12, n_head=12, n_embd=768, block_size=1024):
+    def __init__(self, vocab_size, n_layer=12, n_head=12, n_embd=768, block_size=512):
         self.vocab_size = vocab_size
         self.n_layer = n_layer
         self.n_head = n_head
@@ -58,7 +58,7 @@ class GPT(nn.Module):
 
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
-block_size = 1024
+block_size = 512
 
 def tokenize(example):
     return tokenizer(example['content'], truncation=True, max_length=block_size)
@@ -88,7 +88,7 @@ loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 scaler = torch.cuda.amp.GradScaler()
 
 model.train()
-for epoch in range(3):
+for epoch in range(50):  # Updated to 50 epochs
     total_loss = 0
     pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}")
     for x, y in pbar:
@@ -103,6 +103,7 @@ for epoch in range(3):
         total_loss += loss.item()
         pbar.set_postfix(loss=loss.item())
     print(f"Epoch {epoch+1} complete. Avg Loss: {total_loss/len(train_loader):.4f}")
+
 
 # ----- Save Full Model -----
 torch.save(model.state_dict(), "gpt-codeparrot.pt")
