@@ -13,14 +13,10 @@ app.use(cors({
 }))
 app.use(bodyParser.json())
 
-// Use your provided MongoDB Atlas connection string
+// Secure: Only use environment variable for MongoDB URI
 mongoose.connect(
-  process.env.MONGODB_URI ||
-    'mongodb+srv://bshivakoti08:Yash2014!@cluster0.ykixuh4.mongodb.net/blackide?retryWrites=true&w=majority&appName=Cluster0',
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
+  process.env.MONGODB_URI,
+  {}
 )
 
 const UserSchema = new mongoose.Schema({
