@@ -9,7 +9,7 @@ const SALT_ROUNDS = 10
 
 const app = express()
 app.use(cors({
-  origin: 'https://your-frontend.vercel.app'
+  origin: 'https://ac-pos.vercel.app'
 }))
 app.use(bodyParser.json())
 
