@@ -8,7 +8,9 @@ const bcrypt = require('bcrypt')
 const SALT_ROUNDS = 10
 
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: 'https://your-frontend.vercel.app'
+}))
 app.use(bodyParser.json())
 
 // Use your provided MongoDB Atlas connection string
