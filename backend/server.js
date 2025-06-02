@@ -9,7 +9,7 @@ const SALT_ROUNDS = 10
 
 const app = express()
 app.use(cors({
-  origin: 'https://www.black-ide.space/'
+  origin: 'https://www.black-ide.space'
 }))
 app.use(bodyParser.json())
 
