@@ -8,9 +8,21 @@ const bcrypt = require('bcrypt')
 const SALT_ROUNDS = 10
 
 const app = express()
+const allowedOrigins = [
+  'https://ac-pos.vercel.app',
+  'https://www.black-ide.space'
+];
+
 app.use(cors({
-  origin: 'https://ac-pos.vercel.app'
-}))
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(bodyParser.json())
 
 // Secure: Only use environment variable for MongoDB URI
