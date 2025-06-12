@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
+import * as monaco from 'monaco-editor'; // Add this import if not present
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
@@ -143,6 +144,23 @@ _result
     editorRef.current = editor
   }
 
+  // Defensive patch: ensure all classic completion items have insertText
+  const origRegister = monaco.languages.registerCompletionItemProvider;
+  monaco.languages.registerCompletionItemProvider = function(lang, provider) {
+    const origProvide = provider.provideCompletionItems;
+    provider.provideCompletionItems = async function(...args) {
+      const result = await origProvide.apply(this, args);
+      if (result && Array.isArray(result.suggestions)) {
+        result.suggestions = result.suggestions.map(s => ({
+          ...s,
+          insertText: typeof s.insertText === 'string' ? s.insertText : (s.label || '')
+        }));
+      }
+      return result;
+    };
+    return origRegister.call(this, lang, provider);
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col">
       <header className="p-4 bg-zinc-900 shadow-md text-xl font-semibold flex justify-between items-center">
@@ -159,7 +177,7 @@ _result
           <button
             onClick={autocomplete}
             disabled={loading}
-            className="ml-4 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm disabled:opacity-50"
+            value={code}
           >
             {loading ? 'Thinking...' : 'Autocomplete'}
           </button>
