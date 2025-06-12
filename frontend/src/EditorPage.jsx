@@ -1,7 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
-import * as monaco from 'monaco-editor'
+import * as monaco from 'monaco-editor';
+
+// Patch all completion providers to ensure insertText is always a string
+const origRegister = monaco.languages.registerCompletionItemProvider;
+monaco.languages.registerCompletionItemProvider = function(lang, provider) {
+  const origProvide = provider.provideCompletionItems;
+  provider.provideCompletionItems = async function(...args) {
+    const result = await origProvide.apply(this, args);
+    if (result && Array.isArray(result.suggestions)) {
+      result.suggestions = result.suggestions.map(s => ({
+        ...s,
+        insertText: typeof s.insertText === 'string' ? s.insertText : (s.label || '')
+      }));
+    }
+    return result;
+  };
+  return origRegister.call(this, lang, provider);
+};
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
@@ -144,28 +161,6 @@ _result
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor
   }
-
-  // Defensive: ensure every classic suggestion has insertText as a string
-  useEffect(() => {
-    const disposable = monaco.languages.registerCompletionItemProvider('python', {
-      provideCompletionItems: () => {
-        const suggestions = [
-          {
-            label: 'print',
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: 'print($1)',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Python print function'
-          }
-        ].map(s => ({
-          ...s,
-          insertText: typeof s.insertText === 'string' ? s.insertText : (s.label || '')
-        }));
-        return { suggestions };
-      }
-    });
-    return () => disposable.dispose();
-  }, [monaco]);
 
   return (
     <div className="h-screen w-screen flex flex-col">
