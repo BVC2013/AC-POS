@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
+import * as monaco from 'monaco-editor';
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
@@ -155,6 +156,25 @@ _result
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor
   }
+
+  useEffect(() => {
+    // Defensive: Patch all classic completion providers to ensure insertText is present
+    const disposable = monaco.languages.registerCompletionItemProvider('python', {
+      provideCompletionItems: () => ({
+        suggestions: [
+          // Example suggestion, you can remove or customize this
+          {
+            label: 'print',
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: 'print($1)',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'Python print function'
+          }
+        ]
+      })
+    });
+    return () => disposable.dispose();
+  }, []);
 
   return (
     <div className="h-screen w-screen flex flex-col">
