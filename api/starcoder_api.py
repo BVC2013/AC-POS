@@ -2,15 +2,10 @@ from flask import Flask, request, jsonify
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from flask_cors import CORS
+import re
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": [
-    r"https://*.black-ide.space",
-    r"http://*.black-ide.space",
-    "https://black-ide.space",
-    "http://black-ide.space",
-    "https://f750-74-88-100-197.ngrok-free.app"
-]}})
+CORS(app, resources={r"/*": {"origins": re.compile(r"https?://([a-z0-9-]+\.)*black-ide\.space")}})
 
 # Load model and tokenizer
 model_id = "bigcode/starcoderbase-1b"  # Change to another StarCoder model if you have access/VRAM
