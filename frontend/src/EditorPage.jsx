@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
-import { BACKEND_API_URL } from './api'
+import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
   const [output, setOutput] = useState('')
+  const [loading, setLoading] = useState(false)
   const [pyodideReady, setPyodideReady] = useState(false)
   const pyodideRef = useRef(null)
   const editorRef = useRef(null)
+  const lastPromptRef = useRef('')
+  const lastSuggestionRef = useRef('')
 
   // Load code from backend
   useEffect(() => {
@@ -61,6 +64,84 @@ _result
     }
   }
 
+  // Register inline suggestion provider (ghost correction from your API)
+  const handleEditorWillMount = monaco => {
+    if (monaco._inlineProviderDispose) monaco._inlineProviderDispose.dispose()
+    monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
+      async provideInlineCompletions(model, position) {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        })
+        if (lastPromptRef.current === textUntilPosition && lastSuggestionRef.current) {
+          return {
+            items: [{
+              text: lastSuggestionRef.current,
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              },
+            }],
+          }
+        }
+        lastPromptRef.current = textUntilPosition
+        try {
+          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: textUntilPosition, max_tokens: 16 }), // ghost: small correction
+          })
+          const data = await res.json()
+          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
+          lastSuggestionRef.current = suggestion
+          if (!suggestion) return { items: [] }
+          return {
+            items: [{
+              text: suggestion,
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              },
+            }],
+          }
+        } catch {
+          lastSuggestionRef.current = ''
+          return { items: [] }
+        }
+      },
+      handleItemDidShow: () => {},
+      freeInlineCompletions: () => {},
+    })
+  }
+
+  // Autocomplete button: more tokens from your API
+  const autocomplete = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, max_tokens: 64 }), // button: larger correction
+      })
+      const data = await res.json()
+      setCode(code + (data.completion ? data.completion.trim() : ''))
+    } catch (err) {
+      // Optionally show error to user
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col">
       <header className="p-4 bg-zinc-900 shadow-md text-xl font-semibold flex justify-between items-center">
@@ -74,6 +155,13 @@ _result
           {projectName}
         </div>
         <div>
+          <button
+            onClick={autocomplete}
+            disabled={loading}
+            className="ml-4 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm disabled:opacity-50"
+          >
+            {loading ? 'Thinking...' : 'Autocomplete'}
+          </button>
           <button
             onClick={runInBrowser}
             disabled={!pyodideReady}
@@ -97,8 +185,10 @@ _result
               scrollBeyondLastLine: false,
               wordWrap: 'on',
               fontFamily: 'Fira Code, monospace',
+              inlineSuggest: { enabled: true },
             }}
-            onMount={editor => { editorRef.current = editor }}
+            beforeMount={handleEditorWillMount}
+            onMount={handleEditorDidMount}
           />
         </div>
         <div className="w-1/3 h-full flex flex-col">
