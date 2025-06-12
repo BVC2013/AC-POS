@@ -4,7 +4,6 @@ import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
-  const [loading, setLoading] = useState(false)
   const [output, setOutput] = useState('')
   const [pyodideReady, setPyodideReady] = useState(false)
   const pyodideRef = useRef(null)
@@ -38,24 +37,6 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
-  // Manual autocomplete button (large completion)
-  const autocomplete = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, max_tokens: 150 }),
-      })
-      const data = await res.json()
-      setCode(code + (data.completion ? data.completion.trim() : ''))
-    } catch (err) {
-      console.error('Autocomplete error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   // Run Python in browser using Pyodide
   const runInBrowser = async () => {
     if (!pyodideReady) {
@@ -82,9 +63,8 @@ _result
     }
   }
 
-  // Register inline suggestion provider (ghost autocomplete)
+  // Register inline suggestion provider (ghost autocomplete only)
   const handleEditorWillMount = monaco => {
-    // Remove previous provider if any
     if (monaco._inlineProviderDispose) monaco._inlineProviderDispose.dispose()
     monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
       async provideInlineCompletions(model, position) {
@@ -156,13 +136,6 @@ _result
           {projectName}
         </div>
         <div>
-          <button
-            onClick={autocomplete}
-            disabled={loading}
-            className="ml-4 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm disabled:opacity-50"
-          >
-            {loading ? 'Thinking...' : 'Autocomplete'}
-          </button>
           <button
             onClick={runInBrowser}
             disabled={!pyodideReady}
