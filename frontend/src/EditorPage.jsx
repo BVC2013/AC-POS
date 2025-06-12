@@ -87,12 +87,7 @@ _result
   // Register inline suggestion provider (ghost autocomplete)
   const handleEditorWillMount = monaco => {
     monacoRef.current = monaco
-
-    // Remove any previous provider to avoid duplicates
-    if (monaco._inlineProviderDispose) {
-      monaco._inlineProviderDispose.dispose()
-    }
-
+    if (monaco._inlineProviderDispose) monaco._inlineProviderDispose.dispose()
     monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
       async provideInlineCompletions(model, position) {
         const textUntilPosition = model.getValueInRange({
@@ -101,25 +96,20 @@ _result
           endLineNumber: position.lineNumber,
           endColumn: position.column,
         })
-
         if (lastPromptRef.current === textUntilPosition && lastSuggestionRef.current) {
           return {
-            items: [
-              {
-                text: lastSuggestionRef.current,
-                range: {
-                  startLineNumber: position.lineNumber,
-                  startColumn: position.column,
-                  endLineNumber: position.lineNumber,
-                  endColumn: position.column,
-                },
+            items: [{
+              text: lastSuggestionRef.current,
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
               },
-            ],
+            }],
           }
         }
-
         lastPromptRef.current = textUntilPosition
-
         try {
           const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
             method: 'POST',
@@ -131,17 +121,15 @@ _result
           lastSuggestionRef.current = suggestion
           if (!suggestion) return { items: [] }
           return {
-            items: [
-              {
-                text: suggestion,
-                range: {
-                  startLineNumber: position.lineNumber,
-                  startColumn: position.column,
-                  endLineNumber: position.lineNumber,
-                  endColumn: position.column,
-                },
+            items: [{
+              text: suggestion,
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
               },
-            ],
+            }],
           }
         } catch {
           lastSuggestionRef.current = ''
@@ -177,7 +165,7 @@ _result
       }
     });
     return () => disposable.dispose();
-  }, []);
+  }, [monaco]);
 
   return (
     <div className="h-screen w-screen flex flex-col">
@@ -214,7 +202,7 @@ _result
             height="100%"
             language="python"
             value={code}
-            onChange={value => setCode(value)}
+            onChange={value => value !== undefined && setCode(value)}
             theme="vs-dark"
             options={{
               fontSize: 14,
