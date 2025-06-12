@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor'
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
@@ -157,10 +157,10 @@ _result
     editorRef.current = editor
   }
 
+  // Defensive: ensure every classic suggestion has insertText as a string
   useEffect(() => {
     const disposable = monaco.languages.registerCompletionItemProvider('python', {
       provideCompletionItems: () => {
-        // Defensive: ensure every suggestion has insertText as a string
         const suggestions = [
           {
             label: 'print',
