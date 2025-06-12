@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { API_URL } from './api'
 
+// Update autocomplete and inline completion to use /autocomplete and correct payload
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -39,17 +40,18 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
-  // Manual autocomplete button
+  // Manual autocomplete button (do a lot more)
   const autocomplete = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/complete`, {
+      const res = await fetch(`${API_URL}/autocomplete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: code, max_new_tokens: 30 }),
+        body: JSON.stringify({ code, max_tokens: 150 }), // much larger completion
       })
       const data = await res.json()
-      setCode(code + data.completion)
+      // Optionally trim leading/trailing whitespace
+      setCode(code + (data.completion ? data.completion.trim() : ''))
     } catch (err) {
       console.error('Autocomplete error:', err)
     } finally {
@@ -83,7 +85,7 @@ _result
     }
   }
 
-  // Register inline suggestion provider
+  // Register inline suggestion provider (ghost autocomplete)
   const handleEditorWillMount = monaco => {
     monacoRef.current = monaco
     monaco.languages.registerInlineCompletionsProvider('python', {
@@ -95,10 +97,9 @@ _result
           endColumn: position.column,
         })
 
-        // Only fetch if changed
         if (lastPromptRef.current === textUntilPosition) {
           return { items: lastSuggestionRef.current ? [{
-            text: lastSuggestionRef.current,
+            text: lastSuggestionRef.current.trim(), // trim whitespace for ghost
             range: {
               startLineNumber: position.lineNumber,
               startColumn: position.column,
@@ -111,18 +112,18 @@ _result
         lastPromptRef.current = textUntilPosition
 
         try {
-          const res = await fetch(`${API_URL}/complete`, {
+          const res = await fetch(`${API_URL}/autocomplete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: textUntilPosition, max_new_tokens: 20 }),
+            body: JSON.stringify({ code: textUntilPosition, max_tokens: 32 }), // a bit more for ghost
           })
           const data = await res.json()
-          lastSuggestionRef.current = data.completion || ''
+          lastSuggestionRef.current = data.completion ? data.completion.trim() : ''
           if (!data.completion) return { items: [] }
           return {
             items: [
               {
-                text: data.completion,
+                text: data.completion.trim(),
                 range: {
                   startLineNumber: position.lineNumber,
                   startColumn: position.column,
