@@ -123,7 +123,7 @@ _result
           return {
             items: [
               {
-                text: data.completion.trim(),
+                text: data.completion ? data.completion.trim() : '',
                 range: {
                   startLineNumber: position.lineNumber,
                   startColumn: position.column,
