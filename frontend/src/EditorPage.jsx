@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
 
-// Update autocomplete and inline completion to use /autocomplete and correct payload
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -40,17 +39,16 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
-  // Manual autocomplete button (do a lot more)
+  // Manual autocomplete button (does a lot more)
   const autocomplete = async () => {
     setLoading(true)
     try {
       const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, max_tokens: 150 }), // much larger completion
+        body: JSON.stringify({ code, max_tokens: 150 }),
       })
       const data = await res.json()
-      // Optionally trim leading/trailing whitespace
       setCode(code + (data.completion ? data.completion.trim() : ''))
     } catch (err) {
       console.error('Autocomplete error:', err)
@@ -87,11 +85,11 @@ _result
 
   // Register inline suggestion provider (ghost autocomplete)
   const handleEditorWillMount = monaco => {
-    monacoRef.current = monaco;
+    monacoRef.current = monaco
 
     // Remove any previous provider to avoid duplicates
     if (monaco._inlineProviderDispose) {
-      monaco._inlineProviderDispose.dispose();
+      monaco._inlineProviderDispose.dispose()
     }
 
     monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
@@ -101,7 +99,7 @@ _result
           startColumn: 1,
           endLineNumber: position.lineNumber,
           endColumn: position.column,
-        });
+        })
 
         if (lastPromptRef.current === textUntilPosition && lastSuggestionRef.current) {
           return {
@@ -116,21 +114,21 @@ _result
                 },
               },
             ],
-          };
+          }
         }
 
-        lastPromptRef.current = textUntilPosition;
+        lastPromptRef.current = textUntilPosition
 
         try {
           const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code: textUntilPosition, max_tokens: 32 }),
-          });
-          const data = await res.json();
-          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : '';
-          lastSuggestionRef.current = suggestion;
-          if (!suggestion) return { items: [] };
+          })
+          const data = await res.json()
+          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
+          lastSuggestionRef.current = suggestion
+          if (!suggestion) return { items: [] }
           return {
             items: [
               {
@@ -143,15 +141,15 @@ _result
                 },
               },
             ],
-          };
+          }
         } catch {
-          lastSuggestionRef.current = '';
-          return { items: [] };
+          lastSuggestionRef.current = ''
+          return { items: [] }
         }
       },
       handleItemDidShow: () => {},
       freeInlineCompletions: () => {},
-    });
+    })
   }
 
   const handleEditorDidMount = (editor, monaco) => {
