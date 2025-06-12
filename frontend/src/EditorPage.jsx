@@ -38,6 +38,7 @@ function EditorPage({ user, projectName, onBack }) {
 
   // Register classic completion provider with insertText and snippet
   const handleEditorWillMount = monaco => {
+    // Register classic completion provider (unchanged)
     if (monaco._classicProviderDispose) monaco._classicProviderDispose.dispose?.()
     monaco._classicProviderDispose = monaco.languages.registerCompletionItemProvider('python', {
       triggerCharacters: [' ', '.', '(', '='],
@@ -79,6 +80,44 @@ function EditorPage({ user, projectName, onBack }) {
         }
       },
     })
+
+    // Bind Shift+Tab to low token autocomplete
+    monaco.editor.addCommand(
+      monaco.KeyMod.Shift | monaco.KeyCode.Tab,
+      async function() {
+        const editor = editorRef.current
+        if (!editor) return
+        const model = editor.getModel()
+        const position = editor.getPosition()
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        })
+        try {
+          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: textUntilPosition, max_tokens: 8 }),
+          })
+          const data = await res.json()
+          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
+          if (suggestion) {
+            editor.executeEdits(null, [{
+              range: new monaco.Range(
+                position.lineNumber,
+                position.column,
+                position.lineNumber,
+                position.column
+              ),
+              text: suggestion,
+              forceMoveMarkers: true,
+            }])
+          }
+        } catch {}
+      }
+    )
   }
 
   // Autocomplete button: more tokens from your API
