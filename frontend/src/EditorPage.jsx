@@ -1,24 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
-import * as monaco from 'monaco-editor';
-
-// Patch all completion providers to ensure insertText is always a string
-const origRegister = monaco.languages.registerCompletionItemProvider;
-monaco.languages.registerCompletionItemProvider = function(lang, provider) {
-  const origProvide = provider.provideCompletionItems;
-  provider.provideCompletionItems = async function(...args) {
-    const result = await origProvide.apply(this, args);
-    if (result && Array.isArray(result.suggestions)) {
-      result.suggestions = result.suggestions.map(s => ({
-        ...s,
-        insertText: typeof s.insertText === 'string' ? s.insertText : (s.label || '')
-      }));
-    }
-    return result;
-  };
-  return origRegister.call(this, lang, provider);
-};
 
 function EditorPage({ user, projectName, onBack }) {
   const [code, setCode] = useState('')
@@ -27,7 +9,6 @@ function EditorPage({ user, projectName, onBack }) {
   const [pyodideReady, setPyodideReady] = useState(false)
   const pyodideRef = useRef(null)
   const editorRef = useRef(null)
-  const monacoRef = useRef(null)
   const lastPromptRef = useRef('')
   const lastSuggestionRef = useRef('')
 
@@ -57,7 +38,7 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
-  // Manual autocomplete button (does a lot more)
+  // Manual autocomplete button (large completion)
   const autocomplete = async () => {
     setLoading(true)
     try {
@@ -103,7 +84,7 @@ _result
 
   // Register inline suggestion provider (ghost autocomplete)
   const handleEditorWillMount = monaco => {
-    monacoRef.current = monaco
+    // Remove previous provider if any
     if (monaco._inlineProviderDispose) monaco._inlineProviderDispose.dispose()
     monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
       async provideInlineCompletions(model, position) {
