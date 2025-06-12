@@ -9,8 +9,6 @@ function EditorPage({ user, projectName, onBack }) {
   const [pyodideReady, setPyodideReady] = useState(false)
   const pyodideRef = useRef(null)
   const editorRef = useRef(null)
-  const lastPromptRef = useRef('')
-  const lastSuggestionRef = useRef('')
 
   // Load code from backend
   useEffect(() => {
@@ -38,6 +36,69 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
+  // Register classic completion provider with insertText and snippet
+  const handleEditorWillMount = monaco => {
+    if (monaco._classicProviderDispose) monaco._classicProviderDispose.dispose?.()
+    monaco._classicProviderDispose = monaco.languages.registerCompletionItemProvider('python', {
+      triggerCharacters: [' ', '.', '(', '='],
+      async provideCompletionItems(model, position) {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        })
+        try {
+          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: textUntilPosition, max_tokens: 16 }),
+          })
+          const data = await res.json()
+          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
+          if (!suggestion) return { suggestions: [] }
+          return {
+            suggestions: [
+              {
+                label: 'AI Suggestion',
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText: suggestion,
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: 'AI-powered suggestion',
+                range: {
+                  startLineNumber: position.lineNumber,
+                  startColumn: position.column,
+                  endLineNumber: position.lineNumber,
+                  endColumn: position.column,
+                },
+              },
+            ],
+          }
+        } catch {
+          return { suggestions: [] }
+        }
+      },
+    })
+  }
+
+  // Autocomplete button: more tokens from your API
+  const autocomplete = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, max_tokens: 64 }),
+      })
+      const data = await res.json()
+      setCode(code + (data.completion ? data.completion.trim() : ''))
+    } catch (err) {
+      // Optionally show error to user
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Run Python in browser using Pyodide
   const runInBrowser = async () => {
     if (!pyodideReady) {
@@ -61,80 +122,6 @@ _result
       setOutput(result)
     } catch (err) {
       setOutput(String(err))
-    }
-  }
-
-  // Register inline suggestion provider (ghost correction from your API)
-  const handleEditorWillMount = monaco => {
-    if (monaco._inlineProviderDispose) monaco._inlineProviderDispose.dispose()
-    monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
-      async provideInlineCompletions(model, position) {
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: 1,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        })
-        if (lastPromptRef.current === textUntilPosition && lastSuggestionRef.current) {
-          return {
-            items: [{
-              text: lastSuggestionRef.current,
-              range: {
-                startLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endLineNumber: position.lineNumber,
-                endColumn: position.column,
-              },
-            }],
-          }
-        }
-        lastPromptRef.current = textUntilPosition
-        try {
-          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: textUntilPosition, max_tokens: 16 }),
-          })
-          const data = await res.json()
-          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
-          lastSuggestionRef.current = suggestion
-          if (!suggestion) return { items: [] }
-          return {
-            items: [{
-              text: suggestion,
-              range: {
-                startLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endLineNumber: position.lineNumber,
-                endColumn: position.column,
-              },
-            }],
-          }
-        } catch {
-          lastSuggestionRef.current = ''
-          return { items: [] }
-        }
-      },
-      handleItemDidShow: () => {},
-      freeInlineCompletions: () => {},
-    })
-  }
-
-  // Autocomplete button: more tokens from your API
-  const autocomplete = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, max_tokens: 64 }), // button: larger correction
-      })
-      const data = await res.json()
-      setCode(code + (data.completion ? data.completion.trim() : ''))
-    } catch (err) {
-      // Optionally show error to user
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -185,7 +172,6 @@ _result
               scrollBeyondLastLine: false,
               wordWrap: 'on',
               fontFamily: 'Fira Code, monospace',
-              inlineSuggest: { enabled: true },
             }}
             beforeMount={handleEditorWillMount}
             onMount={handleEditorDidMount}
