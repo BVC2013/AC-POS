@@ -47,5 +47,16 @@ def autocomplete():
         print("Error in /autocomplete:", e)
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/login", methods=["POST", "OPTIONS"])
+def login():
+    data = request.get_json(force=True)
+    username = data.get("username", "")
+    password = data.get("password", "")
+    # Dummy authentication logic (replace with real logic as needed)
+    if username and password:
+        return jsonify({"success": True, "username": username})
+    else:
+        return jsonify({"success": False, "error": "Invalid credentials"}), 401
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
