@@ -158,11 +158,10 @@ _result
   }
 
   useEffect(() => {
-    // Defensive: Patch all classic completion providers to ensure insertText is present
     const disposable = monaco.languages.registerCompletionItemProvider('python', {
-      provideCompletionItems: () => ({
-        suggestions: [
-          // Example suggestion, you can remove or customize this
+      provideCompletionItems: () => {
+        // Defensive: ensure every suggestion has insertText as a string
+        const suggestions = [
           {
             label: 'print',
             kind: monaco.languages.CompletionItemKind.Function,
@@ -170,8 +169,12 @@ _result
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             documentation: 'Python print function'
           }
-        ]
-      })
+        ].map(s => ({
+          ...s,
+          insertText: typeof s.insertText === 'string' ? s.insertText : (s.label || '')
+        }));
+        return { suggestions };
+      }
     });
     return () => disposable.dispose();
   }, []);
