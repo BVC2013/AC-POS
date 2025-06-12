@@ -36,90 +36,6 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
-  // Register classic completion provider with insertText and snippet
-  const handleEditorWillMount = monaco => {
-    // Register classic completion provider (unchanged)
-    if (monaco._classicProviderDispose) monaco._classicProviderDispose.dispose?.()
-    monaco._classicProviderDispose = monaco.languages.registerCompletionItemProvider('python', {
-      triggerCharacters: [' ', '.', '(', '='],
-      async provideCompletionItems(model, position) {
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: 1,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        })
-        try {
-          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: textUntilPosition, max_tokens: 16 }),
-          })
-          const data = await res.json()
-          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
-          if (!suggestion) return { suggestions: [] }
-          return {
-            suggestions: [
-              {
-                label: 'AI Suggestion',
-                kind: monaco.languages.CompletionItemKind.Snippet,
-                insertText: suggestion,
-                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                documentation: 'AI-powered suggestion',
-                range: {
-                  startLineNumber: position.lineNumber,
-                  startColumn: position.column,
-                  endLineNumber: position.lineNumber,
-                  endColumn: position.column,
-                },
-              },
-            ],
-          }
-        } catch {
-          return { suggestions: [] }
-        }
-      },
-    })
-
-    // Bind Shift+Tab to low token autocomplete
-    monaco.editor.addCommand(
-      monaco.KeyMod.Shift | monaco.KeyCode.Tab,
-      async function() {
-        const editor = editorRef.current
-        if (!editor) return
-        const model = editor.getModel()
-        const position = editor.getPosition()
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: 1,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        })
-        try {
-          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: textUntilPosition, max_tokens: 8 }),
-          })
-          const data = await res.json()
-          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
-          if (suggestion) {
-            editor.executeEdits(null, [{
-              range: new monaco.Range(
-                position.lineNumber,
-                position.column,
-                position.lineNumber,
-                position.column
-              ),
-              text: suggestion,
-              forceMoveMarkers: true,
-            }])
-          }
-        } catch {}
-      }
-    )
-  }
-
   // Autocomplete button: more tokens from your API
   const autocomplete = async () => {
     setLoading(true)
@@ -212,7 +128,6 @@ _result
               wordWrap: 'on',
               fontFamily: 'Fira Code, monospace',
             }}
-            beforeMount={handleEditorWillMount}
             onMount={handleEditorDidMount}
           />
         </div>
