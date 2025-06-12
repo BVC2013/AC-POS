@@ -5,12 +5,17 @@ from flask_cors import CORS
 import re
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": re.compile(r"https?://([a-z0-9-]+\.)*black-ide\.space")}})
+
+# Allow all subdomains of black-ide.space and your ngrok URL
+CORS(app, resources={r"/*": {"origins": [
+    re.compile(r"https?://([a-z0-9-]+\.)*black-ide\.space"),
+    "https://f750-74-88-100-197.ngrok-free.app"
+]}})
 
 # Load model and tokenizer
-model_id = "bigcode/starcoderbase-1b"  # Change to another StarCoder model if you have access/VRAM
+model_id = "bigcode/starcoderbase-1b"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
-tokenizer.pad_token = tokenizer.eos_token  # <-- Add this line
+tokenizer.pad_token = tokenizer.eos_token
 model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

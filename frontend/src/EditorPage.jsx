@@ -87,60 +87,71 @@ _result
 
   // Register inline suggestion provider (ghost autocomplete)
   const handleEditorWillMount = monaco => {
-    monacoRef.current = monaco
-    monaco.languages.registerInlineCompletionsProvider('python', {
+    monacoRef.current = monaco;
+
+    // Remove any previous provider to avoid duplicates
+    if (monaco._inlineProviderDispose) {
+      monaco._inlineProviderDispose.dispose();
+    }
+
+    monaco._inlineProviderDispose = monaco.languages.registerInlineCompletionsProvider('python', {
       async provideInlineCompletions(model, position) {
         const textUntilPosition = model.getValueInRange({
           startLineNumber: 1,
           startColumn: 1,
           endLineNumber: position.lineNumber,
           endColumn: position.column,
-        })
+        });
 
-        if (lastPromptRef.current === textUntilPosition) {
-          return { items: lastSuggestionRef.current ? [{
-            text: lastSuggestionRef.current.trim(), // trim whitespace for ghost
-            range: {
-              startLineNumber: position.lineNumber,
-              startColumn: position.column,
-              endLineNumber: position.lineNumber,
-              endColumn: position.column,
-            },
-          }] : [] }
-        }
-
-        lastPromptRef.current = textUntilPosition
-
-        try {
-          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: textUntilPosition, max_tokens: 32 }), // a bit more for ghost
-          })
-          const data = await res.json()
-          lastSuggestionRef.current = data.completion ? data.completion.trim() : ''
-          if (!data.completion) return { items: [] }
+        if (lastPromptRef.current === textUntilPosition && lastSuggestionRef.current) {
           return {
             items: [
               {
-                text: data.completion ? data.completion.trim() : '',
+                text: lastSuggestionRef.current,
                 range: {
                   startLineNumber: position.lineNumber,
                   startColumn: position.column,
                   endLineNumber: position.lineNumber,
                   endColumn: position.column,
-                }
-              }
+                },
+              },
             ],
-          }
+          };
+        }
+
+        lastPromptRef.current = textUntilPosition;
+
+        try {
+          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: textUntilPosition, max_tokens: 32 }),
+          });
+          const data = await res.json();
+          const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : '';
+          lastSuggestionRef.current = suggestion;
+          if (!suggestion) return { items: [] };
+          return {
+            items: [
+              {
+                text: suggestion,
+                range: {
+                  startLineNumber: position.lineNumber,
+                  startColumn: position.column,
+                  endLineNumber: position.lineNumber,
+                  endColumn: position.column,
+                },
+              },
+            ],
+          };
         } catch {
-          lastSuggestionRef.current = ''
-          return { items: [] }
+          lastSuggestionRef.current = '';
+          return { items: [] };
         }
       },
       handleItemDidShow: () => {},
       freeInlineCompletions: () => {},
-    })
+    });
   }
 
   const handleEditorDidMount = (editor, monaco) => {
