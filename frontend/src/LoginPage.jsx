@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { API_URL } from './api'
+import { BACKEND_API_URL } from './api'
 
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('')
@@ -24,7 +24,7 @@ function LoginPage({ onLogin }) {
     }
     try {
       const endpoint = isRegister ? '/api/register' : '/api/login'
-      const res = await fetch(`${API_URL}${endpoint}`, {
+      const res = await fetch(`${BACKEND_API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password }),

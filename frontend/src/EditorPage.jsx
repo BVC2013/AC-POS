@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
-import { API_URL, AUTOCOMPLETE_API_URL } from './api'
+import { BACKEND_API_URL, AUTOCOMPLETE_API_URL } from './api'
 
 // Update autocomplete and inline completion to use /autocomplete and correct payload
 function EditorPage({ user, projectName, onBack }) {
@@ -16,7 +16,7 @@ function EditorPage({ user, projectName, onBack }) {
 
   // Load code from backend
   useEffect(() => {
-    fetch(`${API_URL}/api/project?username=${user}&name=${projectName}`)
+    fetch(`${BACKEND_API_URL}/api/project?username=${user}&name=${projectName}`)
       .then(res => res.json())
       .then(proj => setCode(proj?.code || '# Start typing Python code...\n'))
   }, [user, projectName])
@@ -24,7 +24,7 @@ function EditorPage({ user, projectName, onBack }) {
   // Save code to backend on change
   useEffect(() => {
     if (!code) return
-    fetch(`${API_URL}/api/project/save`, {
+    fetch(`${BACKEND_API_URL}/api/project/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user, name: projectName, code }),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { API_URL } from './api'
+import { BACKEND_API_URL } from './api'
 
 function ProjectsPage({ user, onOpenProject, onLogout }) {
   const [projects, setProjects] = useState([])
@@ -7,7 +7,7 @@ function ProjectsPage({ user, onOpenProject, onLogout }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch(`${API_URL}/api/projects?username=${user}`)
+    fetch(`${BACKEND_API_URL}/api/projects?username=${user}`)
       .then(res => res.json())
       .then(setProjects)
   }, [user])
@@ -15,7 +15,7 @@ function ProjectsPage({ user, onOpenProject, onLogout }) {
   const handleCreate = async () => {
     if (!newProject.trim()) return
     try {
-      const res = await fetch(`${API_URL}/api/projects`, {
+      const res = await fetch(`${BACKEND_API_URL}/api/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user, name: newProject.trim() }),
