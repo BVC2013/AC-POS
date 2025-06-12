@@ -93,7 +93,7 @@ _result
           const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: textUntilPosition, max_tokens: 16 }), // ghost: small correction
+            body: JSON.stringify({ code: textUntilPosition, max_tokens: 16 }),
           })
           const data = await res.json()
           const suggestion = (data && typeof data.completion === 'string') ? data.completion.trim() : ''
