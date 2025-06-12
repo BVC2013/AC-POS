@@ -4,7 +4,11 @@ import torch
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://black-ide.space", "http://black-ide.space"]}})
+CORS(app, resources={r"/*": {"origins": [
+    "https://black-ide.space",
+    "http://black-ide.space",
+    "https://f750-74-88-100-197.ngrok-free.app"
+]}})
 
 # Load model and tokenizer
 model_id = "bigcode/starcoderbase-1b"  # Change to another StarCoder model if you have access/VRAM
@@ -46,17 +50,6 @@ def autocomplete():
     except Exception as e:
         print("Error in /autocomplete:", e)
         return jsonify({"error": str(e)}), 500
-
-@app.route("/api/login", methods=["POST", "OPTIONS"])
-def login():
-    data = request.get_json(force=True)
-    username = data.get("username", "")
-    password = data.get("password", "")
-    # Dummy authentication logic (replace with real logic as needed)
-    if username and password:
-        return jsonify({"success": True, "username": username})
-    else:
-        return jsonify({"success": False, "error": "Invalid credentials"}), 401
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)

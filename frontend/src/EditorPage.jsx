@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
-import { API_URL } from './api'
+import { API_URL, AUTOCOMPLETE_API_URL } from './api'
 
 // Update autocomplete and inline completion to use /autocomplete and correct payload
 function EditorPage({ user, projectName, onBack }) {
@@ -44,7 +44,7 @@ function EditorPage({ user, projectName, onBack }) {
   const autocomplete = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/autocomplete`, {
+      const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, max_tokens: 150 }), // much larger completion
@@ -112,7 +112,7 @@ _result
         lastPromptRef.current = textUntilPosition
 
         try {
-          const res = await fetch(`${API_URL}/autocomplete`, {
+          const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code: textUntilPosition, max_tokens: 32 }), // a bit more for ghost
