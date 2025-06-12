@@ -129,8 +129,8 @@ _result
                   startColumn: position.column,
                   endLineNumber: position.lineNumber,
                   endColumn: position.column,
-                },
-              },
+                }
+              }
             ],
           }
         } catch {
