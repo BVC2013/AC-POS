@@ -152,7 +152,7 @@ del sys
               wordWrap: 'on',
               fontFamily: 'Fira Code, monospace',
             }}
-            onMount={handleEditorDidMount}
+            onMount={editor => { editorRef.current = editor }}
           />
         </div>
         <div className="w-1/3 h-full flex flex-col">
