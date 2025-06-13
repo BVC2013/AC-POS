@@ -68,7 +68,7 @@ from io import StringIO
 _stdout = sys.stdout
 sys.stdout = StringIO()
 try:
-${code.split('\n').map(line => '    ' + line).join('\n')}
+    exec(${JSON.stringify(code)})
     _result = sys.stdout.getvalue()
 finally:
     sys.stdout = _stdout
