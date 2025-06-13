@@ -7,9 +7,10 @@ function EditorPage({ user, projectName, onBack }) {
   const [output, setOutput] = useState('')
   const [loading, setLoading] = useState(false)
   const [pyodideReady, setPyodideReady] = useState(false)
-  const [inputPrompt, setInputPrompt] = useState(null)
+  const [inputPrompt, setInputPrompt] = useState('')
   const [inputValue, setInputValue] = useState('')
   const [waitingForInput, setWaitingForInput] = useState(false)
+  const [outputLines, setOutputLines] = useState([])
   const pyodideRef = useRef(null)
   const editorRef = useRef(null)
   const inputResolveRef = useRef(null)
@@ -31,16 +32,17 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [code, user, projectName])
 
-  // Setup Pyodide and override input
+  // Load Pyodide and set up input bridge
   useEffect(() => {
     if (!window.loadPyodide) return
     window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(async pyodide => {
       pyodideRef.current = pyodide
       // Expose JS input handler to Python
-      pyodide.globals.set("js_input", async prompt => {
+      pyodide.globals.set("js_input", prompt => {
         setInputPrompt(prompt)
         setWaitingForInput(true)
-        return await new Promise(resolve => {
+        setOutputLines(lines => [...lines, prompt])
+        return new Promise(resolve => {
           inputResolveRef.current = resolve
         })
       })
@@ -52,7 +54,8 @@ function EditorPage({ user, projectName, onBack }) {
   const handleInputSubmit = e => {
     e.preventDefault()
     setWaitingForInput(false)
-    setInputPrompt(null)
+    setInputPrompt('')
+    setOutputLines(lines => [...lines, inputValue])
     if (inputResolveRef.current) {
       inputResolveRef.current(inputValue)
       inputResolveRef.current = null
@@ -67,6 +70,7 @@ function EditorPage({ user, projectName, onBack }) {
       return
     }
     setOutput('')
+    setOutputLines([])
     try {
       await pyodideRef.current.runPythonAsync(`
 import sys
@@ -81,8 +85,10 @@ del sys
       await pyodideRef.current.runPythonAsync(code)
       let result = pyodideRef.current.runPython('sys.stdout.getvalue()')
       setOutput(result)
+      setOutputLines(lines => [...lines, ...result.split('\n')])
     } catch (err) {
       setOutput(String(err))
+      setOutputLines(lines => [...lines, String(err)])
     }
   }
 
@@ -152,13 +158,15 @@ del sys
               wordWrap: 'on',
               fontFamily: 'Fira Code, monospace',
             }}
-            onMount={editor => { editorRef.current = editor }}
+            onMount={handleEditorDidMount}
           />
         </div>
         <div className="w-1/3 h-full flex flex-col">
           <div className="bg-zinc-900 text-green-400 font-mono rounded h-full p-3 overflow-auto shadow-inner border border-zinc-700">
             <div className="mb-2 text-white font-bold">Terminal</div>
-            <pre className="whitespace-pre-wrap">{output}</pre>
+            <pre className="whitespace-pre-wrap">
+              {outputLines.join('\n')}
+            </pre>
             {waitingForInput && (
               <form onSubmit={handleInputSubmit} className="mt-2 flex">
                 <span className="text-white mr-2">{inputPrompt || 'Input:'}</span>
