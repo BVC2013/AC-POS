@@ -67,11 +67,9 @@ import sys
 from io import StringIO
 _stdout = sys.stdout
 sys.stdout = StringIO()
-try:
-    exec(${JSON.stringify(code)})
-    _result = sys.stdout.getvalue()
-finally:
-    sys.stdout = _stdout
+exec(${JSON.stringify(code)})
+_result = sys.stdout.getvalue()
+sys.stdout = _stdout
 _result
       `)
       setOutput(result)
