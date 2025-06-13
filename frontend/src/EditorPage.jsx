@@ -7,8 +7,12 @@ function EditorPage({ user, projectName, onBack }) {
   const [output, setOutput] = useState('')
   const [loading, setLoading] = useState(false)
   const [pyodideReady, setPyodideReady] = useState(false)
+  const [inputPrompt, setInputPrompt] = useState(null)
+  const [inputValue, setInputValue] = useState('')
+  const [waitingForInput, setWaitingForInput] = useState(false)
   const pyodideRef = useRef(null)
   const editorRef = useRef(null)
+  const inputResolveRef = useRef(null)
 
   // Load code from backend
   useEffect(() => {
@@ -27,14 +31,60 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [code, user, projectName])
 
-  // Load Pyodide on mount
+  // Setup Pyodide and override input
   useEffect(() => {
     if (!window.loadPyodide) return
-    window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(pyodide => {
+    window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(async pyodide => {
       pyodideRef.current = pyodide
+      // Expose JS input handler to Python
+      pyodide.globals.set("js_input", async prompt => {
+        setInputPrompt(prompt)
+        setWaitingForInput(true)
+        return await new Promise(resolve => {
+          inputResolveRef.current = resolve
+        })
+      })
       setPyodideReady(true)
     })
   }, [])
+
+  // Handle user submitting input
+  const handleInputSubmit = e => {
+    e.preventDefault()
+    setWaitingForInput(false)
+    setInputPrompt(null)
+    if (inputResolveRef.current) {
+      inputResolveRef.current(inputValue)
+      inputResolveRef.current = null
+    }
+    setInputValue('')
+  }
+
+  // Run Python in browser using Pyodide with interactive input
+  const runInBrowser = async () => {
+    if (!pyodideReady) {
+      setOutput('Pyodide is still loading...')
+      return
+    }
+    setOutput('')
+    try {
+      await pyodideRef.current.runPythonAsync(`
+import sys
+from io import StringIO
+_stdout = sys.stdout
+sys.stdout = StringIO()
+def input(prompt=""):
+    from js import js_input
+    return js_input(prompt)
+del sys
+`)
+      await pyodideRef.current.runPythonAsync(code)
+      let result = pyodideRef.current.runPython('sys.stdout.getvalue()')
+      setOutput(result)
+    } catch (err) {
+      setOutput(String(err))
+    }
+  }
 
   // Autocomplete button: more tokens from your API
   const autocomplete = async () => {
@@ -51,30 +101,6 @@ function EditorPage({ user, projectName, onBack }) {
       // Optionally show error to user
     } finally {
       setLoading(false)
-    }
-  }
-
-  // Run Python in browser using Pyodide
-  const runInBrowser = async () => {
-    if (!pyodideReady) {
-      setOutput('Pyodide is still loading...')
-      return
-    }
-    try {
-      await pyodideRef.current.loadPackagesFromImports(code)
-      let result = await pyodideRef.current.runPythonAsync(`
-import sys
-from io import StringIO
-_stdout = sys.stdout
-sys.stdout = StringIO()
-exec(${JSON.stringify(code)})
-_result = sys.stdout.getvalue()
-sys.stdout = _stdout
-_result
-      `)
-      setOutput(result)
-    } catch (err) {
-      setOutput(String(err))
     }
   }
 
@@ -133,6 +159,20 @@ _result
           <div className="bg-zinc-900 text-green-400 font-mono rounded h-full p-3 overflow-auto shadow-inner border border-zinc-700">
             <div className="mb-2 text-white font-bold">Terminal</div>
             <pre className="whitespace-pre-wrap">{output}</pre>
+            {waitingForInput && (
+              <form onSubmit={handleInputSubmit} className="mt-2 flex">
+                <span className="text-white mr-2">{inputPrompt || 'Input:'}</span>
+                <input
+                  className="flex-1 bg-zinc-800 text-green-400 px-2 py-1 rounded"
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  autoFocus
+                />
+                <button className="ml-2 px-2 py-1 bg-green-700 rounded text-white" type="submit">
+                  Enter
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </main>
