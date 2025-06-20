@@ -13,7 +13,7 @@ CORS(app, resources={r"/*": {"origins": [
 ]}})
 
 # Load model and tokenizer
-model_id = "bigcode/starcoderbase-1b"
+model_id = "bigcode/starcoder2-3b"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 tokenizer.pad_token = tokenizer.eos_token
 model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True)
@@ -26,6 +26,7 @@ def autocomplete():
     try:
         data = request.get_json(force=True)
         code = data.get("code", "")
+        #was 20
         max_tokens = int(data.get("max_tokens", 20))
 
         if not code:
@@ -41,10 +42,10 @@ def autocomplete():
             output = model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                max_new_tokens=max_tokens,
-                do_sample=True,
-                temperature=0.8,
-                pad_token_id=tokenizer.eos_token_id
+                max_new_tokens=8,
+                pad_token_id=tokenizer.eos_token_id,
+                temperature=0.2,
+                do_sample=True
             )
         # Get only the generated part
         completion = tokenizer.decode(output[0][input_ids.shape[1]:], skip_special_tokens=True)

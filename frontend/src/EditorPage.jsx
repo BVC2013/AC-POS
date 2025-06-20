@@ -36,19 +36,20 @@ function EditorPage({ user, projectName, onBack }) {
     })
   }, [])
 
-  // Autocomplete button: more tokens from your API
+  // Autocomplete button: send all code in the editor to backend
   const autocomplete = async () => {
     setLoading(true)
     try {
       const res = await fetch(`${AUTOCOMPLETE_API_URL}/autocomplete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, max_tokens: 64 }),
+        body: JSON.stringify({ code }), // sends all code in the editor
       })
+      if (!res.ok) throw new Error('API error')
       const data = await res.json()
       setCode(code + (data.completion ? data.completion.trim() : ''))
     } catch (err) {
-      // Optionally show error to user
+      alert('Autocomplete failed: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -67,11 +68,9 @@ import sys
 from io import StringIO
 _stdout = sys.stdout
 sys.stdout = StringIO()
-try:
-${code.split('\n').map(line => '    ' + line).join('\n')}
-    _result = sys.stdout.getvalue()
-finally:
-    sys.stdout = _stdout
+${code}
+_result = sys.stdout.getvalue()
+sys.stdout = _stdout
 _result
       `)
       setOutput(result)
