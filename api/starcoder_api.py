@@ -1,5 +1,11 @@
+import logging
+from transformers import logging as hf_logging
+
+logging.basicConfig(level=logging.INFO)
+hf_logging.set_verbosity_info()
+
 from flask import Flask, request, jsonify
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from flask_cors import CORS
 import re
@@ -13,46 +19,35 @@ CORS(app, resources={r"/*": {"origins": [
 ]}})
 
 # Load model and tokenizer
-model_id = "bigcode/starcoder2-3b"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+MODEL_ID = "bigcode/starcoder2-3b"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 tokenizer.pad_token = tokenizer.eos_token
-model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained(MODEL_ID, trust_remote_code=True)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = model.to(device)
 
-@app.route("/autocomplete", methods=["POST"])
+@app.route('/autocomplete', methods=['POST'])
 def autocomplete():
-    try:
-        data = request.get_json(force=True)
-        code = data.get("code", "")
-        #was 20
-        max_tokens = int(data.get("max_tokens", 20))
-
-        if not code:
-            return jsonify({"error": "No code provided"}), 400
-
-        # Tokenize and move tensors to the correct device
-        inputs = tokenizer(code, return_tensors="pt", padding=True)
-        input_ids = inputs["input_ids"].to(device)
-        attention_mask = inputs["attention_mask"].to(device)
-
-        # Generate completion
-        with torch.no_grad():
-            output = model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                max_new_tokens=8,
-                pad_token_id=tokenizer.eos_token_id,
-                temperature=0.2,
-                do_sample=True
-            )
-        # Get only the generated part
-        completion = tokenizer.decode(output[0][input_ids.shape[1]:], skip_special_tokens=True)
-        return jsonify({"completion": completion})
-    except Exception as e:
-        print("Error in /autocomplete:", e)
-        return jsonify({"error": str(e)}), 500
+    data = request.json
+    code = data.get('code', '')
+    # Prepend instruction to encourage simple code
+    prompt = "# Write simple, clear Python code.\n" + code
+    inputs = tokenizer(prompt, return_tensors="pt")
+    input_ids = inputs.input_ids.to(model.device)
+    attention_mask = inputs.attention_mask.to(model.device)
+    gen_tokens = model.generate(
+        input_ids,
+        attention_mask=attention_mask,
+        max_new_tokens=100,
+        pad_token_id=tokenizer.eos_token_id,
+        temperature=0.01,
+        do_sample=True,
+        eos_token_id=tokenizer.eos_token_id,
+        repetition_penalty=1.2
+    )
+    completion = tokenizer.decode(gen_tokens[0][input_ids.shape[-1]:], skip_special_tokens=True)
+    return jsonify({'completion': completion})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
