@@ -32,7 +32,7 @@ def autocomplete():
     data = request.json
     code = data.get('code', '')
     # Prepend instruction to encourage simple code
-    prompt = "# Write simple, clear Python code.\n" + code
+    prompt = '"""\n' + code  # Triple quotes often signal code-only to LLMs
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs.input_ids.to(model.device)
     attention_mask = inputs.attention_mask.to(model.device)
@@ -47,7 +47,13 @@ def autocomplete():
         repetition_penalty=1.2
     )
     completion = tokenizer.decode(gen_tokens[0][input_ids.shape[-1]:], skip_special_tokens=True)
-    return jsonify({'completion': completion})
+    # Remove comments, markdown, and blank lines
+    python_lines = [
+        line for line in completion.split('\n')
+        if line.strip() and not line.strip().startswith('#') and not line.strip().startswith('```')
+    ]
+    python_code = '\n'.join(python_lines)
+    return jsonify({'completion': python_code})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
