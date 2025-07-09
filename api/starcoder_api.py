@@ -39,9 +39,9 @@ def autocomplete():
     gen_tokens = model.generate(
         input_ids,
         attention_mask=attention_mask,
-        max_new_tokens=100,
+        max_new_tokens=10,
         pad_token_id=tokenizer.eos_token_id,
-        temperature=0.01,
+        temperature=0.3,
         do_sample=True,
         eos_token_id=tokenizer.eos_token_id,
         repetition_penalty=1.2
