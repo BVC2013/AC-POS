@@ -15,7 +15,7 @@ app = Flask(__name__)
 # Allow all subdomains of black-ide.space and your ngrok URL
 CORS(app, resources={r"/*": {"origins": [
     re.compile(r"https?://([a-z0-9-]+\.)*black-ide\.space"),
-    "https://c3b6f559a78d.ngrok-free.app"
+    "https://38124877ffd8.ngrok-free.app"
 ]}})
 
 # Load model and tokenizer
