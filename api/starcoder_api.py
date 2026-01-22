@@ -15,7 +15,7 @@ app = Flask(__name__)
 # Allow all subdomains of black-ide.space and your ngrok URL
 CORS(app, resources={r"/*": {"origins": [
     re.compile(r"https?://([a-z0-9-]+\.)*black-ide\.space"),
-    "https://b564f56cbce2.ngrok-free.app"
+    "https://62db0f83a622.ngrok-free.app"
 ]}})
 
 # Load model and tokenizer
@@ -31,20 +31,22 @@ model = model.to(device)
 def autocomplete():
     data = request.json
     code = data.get('code', '')
-    # Prepend instruction to encourage simple code
-    prompt = '"""\n' + code  # Triple quotes often signal code-only to LLMs
+    # Prepend instruction to steer the model toward practical Python completions
+    prompt = '"""Complete the following Python code without explanations.\n\n' + code
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs.input_ids.to(model.device)
     attention_mask = inputs.attention_mask.to(model.device)
     gen_tokens = model.generate(
         input_ids,
         attention_mask=attention_mask,
-        max_new_tokens=10,
+        max_new_tokens=80,
+        min_new_tokens=12,
         pad_token_id=tokenizer.eos_token_id,
-        temperature=0.3,
+        temperature=0.2,
         do_sample=True,
         eos_token_id=tokenizer.eos_token_id,
-        repetition_penalty=1.2
+        top_p=0.9,
+        repetition_penalty=1.3
     )
     completion = tokenizer.decode(gen_tokens[0][input_ids.shape[-1]:], skip_special_tokens=True)
     # Remove comments, markdown, and blank lines
@@ -52,7 +54,7 @@ def autocomplete():
         line for line in completion.split('\n')
         if line.strip() and not line.strip().startswith('#') and not line.strip().startswith('```')
     ]
-    python_code = '\n'.join(python_lines)
+    python_code = '\n'.join(python_lines).strip() or completion.strip()
     return jsonify({'completion': python_code})
 
 if __name__ == "__main__":
