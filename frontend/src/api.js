@@ -1,2 +1,2 @@
-export const AUTOCOMPLETE_API_URL = "https://1e1e-98-109-121-116.ngrok-free.app";
+export const AUTOCOMPLETE_API_URL = "https://2752-98-109-121-116.ngrok-free.app";
 export const BACKEND_API_URL = "https://ac-pos.onrender.com"; // Replace with your real Render backend URL
